@@ -1,7 +1,6 @@
-# Force reinstall dependencies
 Flask==2.3.2
 gunicorn==21.2.0
-SQLAlchemy==2.0.21
+SQLAlchemy==2.0.23
 typing_extensions==4.7.1
 requests==2.31.0
 pandas==2.0.3
