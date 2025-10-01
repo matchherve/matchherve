@@ -1,0 +1,43 @@
+from flask import Flask, jsonify, request
+from db import SessionLocal
+from models import Team, Match, MatchStats, Base
+from analyze import compare_teams
+from db import engine
+
+Base.metadata.create_all(bind=engine)
+
+app = Flask(__name__)
+
+@app.route('/teams/<int:team_id>', methods=['GET'])
+def get_team(team_id):
+    session = SessionLocal()
+    t = session.query(Team).filter_by(sofascore_id=team_id).first()
+    if not t:
+        return jsonify({'error':'team not found'}), 404
+    return jsonify({'sofascore_id': t.sofascore_id, 'name': t.name})
+
+@app.route('/collect/team/<int:team_id>', methods=['POST'])
+def collect_team(team_id):
+    from collector import fetch_and_store_team
+    max_events = int(request.args.get('max', 50))
+    fetch_and_store_team(team_id, max_events=max_events)
+    return jsonify({'status':'started'})
+
+# compare using query params: /compare?team_a=2817&team_b=5421
+@app.route('/compare')
+def compare_query():
+    a = request.args.get('team_a')
+    b = request.args.get('team_b')
+    if not a or not b:
+        return jsonify({'error':'team_a and team_b required'}), 400
+    result = compare_teams(int(a), int(b))
+    return jsonify(result)
+
+# compare using path: /compare/2817/5421
+@app.route('/compare/<int:team_a_id>/<int:team_b_id>')
+def compare_path(team_a_id, team_b_id):
+    result = compare_teams(team_a_id, team_b_id)
+    return jsonify(result)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
