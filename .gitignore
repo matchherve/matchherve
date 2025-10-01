@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+env/
+venv/
+instance/
+*.sqlite3
+data.db
+
+# IDE / éditeur
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
