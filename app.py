@@ -6,7 +6,7 @@ from db import engine
 
 Base.metadata.create_all(bind=engine)
 
-app = Flask(__name__)
+app = Flask(__name__))
 
 @app.route('/teams/<int:team_id>', methods=['GET'])
 def get_team(team_id):
