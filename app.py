@@ -1,12 +1,19 @@
 from flask import Flask, jsonify, request
-from db import SessionLocal
+from db import SessionLocal, engine
 from models import Team, Match, MatchStats, Base
 from analyze import compare_teams
-from db import engine
-
-Base.metadata.create_all(bind=engine)
 
 app = Flask(__name__)
+
+# Route temporaire pour initialiser la base (à appeler une seule fois)
+@app.route('/init-db')
+def init_db():
+    Base.metadata.create_all(bind=engine)
+    return jsonify({"status": "Tables créées avec succès"})
+
+@app.route('/')
+def home():
+    return jsonify({"status": "OK", "message": "API-Football backend is running!"})
 
 @app.route('/teams/<int:team_id>', methods=['GET'])
 def get_team(team_id):
@@ -23,7 +30,6 @@ def collect_team(team_id):
     fetch_and_store_team(team_id, max_events=max_events)
     return jsonify({'status':'started'})
 
-# compare using query params: /compare?team_a=2817&team_b=5421
 @app.route('/compare')
 def compare_query():
     a = request.args.get('team_a')
@@ -33,7 +39,6 @@ def compare_query():
     result = compare_teams(int(a), int(b))
     return jsonify(result)
 
-# compare using path: /compare/2817/5421
 @app.route('/compare/<int:team_a_id>/<int:team_b_id>')
 def compare_path(team_a_id, team_b_id):
     result = compare_teams(team_a_id, team_b_id)
@@ -42,5 +47,4 @@ def compare_path(team_a_id, team_b_id):
 if __name__ == '__main__':
     import os
     port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
- 
+    app.run(debug=False, host='0.0.0.0', port=port)
