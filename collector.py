@@ -24,23 +24,17 @@ def fetch_and_store_team(team_id, max_events=10):
     if not API_FOOTBALL_KEY:
         raise Exception("Clé API-Football manquante")
 
-    # Étape 1 : Récupérer les derniers matchs de l'équipe
+    # Récupérer les derniers matchs
     url = f"https://{API_FOOTBALL_HOST}/v3/fixtures"
-    params = {
-        "team": team_id,
-        "last": max_events,
-        "timezone": "UTC"
-    }
+    params = {"team": team_id, "last": max_events}
     r = requests.get(url, headers=headers, params=params)
     r.raise_for_status()
     fixtures = r.json()['response']
 
     for fix in fixtures:
-        # Étape 2 : Récupérer les stats du match
         fixture_id = fix['fixture']['id']
-        stats_url = f"https://{API_FOOTBALL_HOST}/v3/fixtures/statistics"
-        stats_r = requests.get(stats_url, headers=headers, params={"fixture": fixture_id})
         
+        # Récupérer les stats du match
         stats_obj = {
             'possession_home': None, 'possession_away': None,
             'shots_home': 0, 'shots_away': 0,
@@ -48,22 +42,26 @@ def fetch_and_store_team(team_id, max_events=10):
             'corners_home': 0, 'corners_away': 0
         }
 
+        stats_url = f"https://{API_FOOTBALL_HOST}/v3/fixtures/statistics"
+        stats_r = requests.get(stats_url, headers=headers, params={"fixture": fixture_id})
         if stats_r.status_code == 200:
             stats_data = stats_r.json()['response']
             if stats_data:
                 for team_stat in stats_data:
                     side = 'home' if team_stat['team']['id'] == fix['teams']['home']['id'] else 'away'
                     for stat in team_stat['statistics']:
-                        if stat['type'] == 'Ball Possession':
-                            stats_obj[f'possession_{side}'] = float(stat['value'].replace('%', '') or 0)
-                        elif stat['type'] == 'Total Shots':
-                            stats_obj[f'shots_{side}'] = int(stat['value'] or 0)
-                        elif stat['type'] == 'Fouls':
-                            stats_obj[f'fouls_{side}'] = int(stat['value'] or 0)
-                        elif stat['type'] == 'Corners':
-                            stats_obj[f'corners_{side}'] = int(stat['value'] or 0)
+                        t = stat['type']
+                        v = stat['value']
+                        if t == 'Ball Possession':
+                            stats_obj[f'possession_{side}'] = float(str(v).replace('%', '') or 0)
+                        elif t == 'Total Shots':
+                            stats_obj[f'shots_{side}'] = int(v or 0)
+                        elif t == 'Fouls':
+                            stats_obj[f'fouls_{side}'] = int(v or 0)
+                        elif t == 'Corners':
+                            stats_obj[f'corners_{side}'] = int(v or 0)
 
-        # Étape 3 : Sauvegarder le match
+        # Sauvegarder le match
         home_team = ensure_team(fix['teams']['home']['id'], fix['teams']['home']['name'])
         away_team = ensure_team(fix['teams']['away']['id'], fix['teams']['away']['name'])
 
@@ -87,7 +85,7 @@ def fetch_and_store_team(team_id, max_events=10):
             session.rollback()
             m = session.query(Match).filter_by(sofascore_id=fixture_id).first()
 
-        # Étape 4 : Sauvegarder les stats
+        # Sauvegarder les stats
         if m:
             ms = session.query(MatchStats).filter_by(match_id=m.id).first()
             if not ms:
